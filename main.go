@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 )
@@ -12,15 +11,6 @@ type Context struct {
 	Ctx context.Context
 	W   http.ResponseWriter
 	R   *http.Request
-}
-
-// JSON serializes the given data to JSON and writes it to the response.
-func (c *Context) JSON(statusCode int, data interface{}) {
-	c.W.Header().Set("Content-Type", "application/json")
-	c.W.WriteHeader(statusCode)
-	if err := json.NewEncoder(c.W).Encode(data); err != nil {
-		http.Error(c.W, err.Error(), http.StatusInternalServerError)
-	}
 }
 
 // HandlerFunc defines the handler used by the framework.
@@ -73,7 +63,6 @@ func main() {
 	engine := New()
 
 	engine.router.GET("/", sayHelloHandler)
-	engine.router.GET("/json", sayHelloJSONHandler)
 
 	slog.Info("Server is running at http://localhost:8080")
 	http.ListenAndServe(":8080", engine)
@@ -82,14 +71,4 @@ func main() {
 func sayHelloHandler(c *Context) {
 	slog.Info("called sayHelloHandler")
 	c.W.Write([]byte("Hello, World!"))
-}
-
-type Something struct {
-	Name string `json:"name"`
-}
-
-func sayHelloJSONHandler(c *Context) {
-	slog.Info("called sayHelloJSONHandler")
-	something := Something{Name: "something"}
-	c.JSON(http.StatusOK, something)
 }
