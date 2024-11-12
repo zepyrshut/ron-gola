@@ -2,6 +2,7 @@ package ron
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 )
 
@@ -10,6 +11,15 @@ type Context struct {
 	W http.ResponseWriter
 	R *http.Request
 	E *Engine
+}
+
+func (c *Context) JSON(code int, data interface{}) {
+	c.W.WriteHeader(code)
+	c.W.Header().Set("Content-Type", "application/json")
+	encoder := json.NewEncoder(c.W)
+	if err := encoder.Encode(data); err != nil {
+		http.Error(c.W, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 type Engine struct {

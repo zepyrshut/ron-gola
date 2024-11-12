@@ -11,6 +11,7 @@ func main() {
 	r := ron.New()
 
 	r.GET("/", helloWorld)
+	r.GET("/json", helloWorldJSON)
 	r.POST("/another", anotherHelloWorld)
 
 	slog.Info("Server is running at http://localhost:8080")
@@ -23,4 +24,8 @@ func helloWorld(c *ron.Context) {
 
 func anotherHelloWorld(c *ron.Context) {
 	c.W.Write([]byte("another hello world"))
+}
+
+func helloWorldJSON(c *ron.Context) {
+	c.JSON(200, map[string]string{"message": "hello world"})
 }
