@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-type D map[string]interface{}
+type Data map[string]any
 
 type Context struct {
 	C context.Context
@@ -15,7 +15,12 @@ type Context struct {
 	E *Engine
 }
 
-func (c *Context) JSON(code int, data interface{}) {
+type Engine struct {
+	mux      *http.ServeMux
+	Renderer *Render
+}
+
+func (c *Context) JSON(code int, data Data) {
 	c.W.WriteHeader(code)
 	c.W.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(c.W)
@@ -24,8 +29,11 @@ func (c *Context) JSON(code int, data interface{}) {
 	}
 }
 
-type Engine struct {
-	mux *http.ServeMux
+func (c *Context) HTML(code int, name string, data Data) {
+	c.W.WriteHeader(code)
+	c.E.Renderer.Template(c.W, name, &TemplateData{
+		Data: data,
+	})
 }
 
 func New() *Engine {
