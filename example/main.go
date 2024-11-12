@@ -27,5 +27,5 @@ func anotherHelloWorld(c *ron.Context) {
 }
 
 func helloWorldJSON(c *ron.Context) {
-	c.JSON(200, map[string]string{"message": "hello world"})
+	c.JSON(200, ron.D{"message": "hello world"})
 }

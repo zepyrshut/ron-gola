@@ -3,8 +3,11 @@ package ron
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
+
+type D map[string]interface{}
 
 type Context struct {
 	C context.Context
