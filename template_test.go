@@ -41,7 +41,7 @@ func Test_HTMLRender(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := HTMLRender(tt.arg)
+			actual := NewHTMLRender(tt.arg)
 			if reflect.DeepEqual(expected, actual) == false {
 				t.Errorf("Expected: %v, Actual: %v", expected, actual)
 			}
@@ -68,7 +68,7 @@ func Test_apply(t *testing.T) {
 				Functions:     make(template.FuncMap),
 				templateCache: make(templateCache),
 			},
-			actual: HTMLRender(func(r *Render) {
+			actual: NewHTMLRender(func(r *Render) {
 				r.EnableCache = true
 				r.TemplatesPath = "foobar"
 			}),
@@ -86,7 +86,7 @@ func Test_apply(t *testing.T) {
 }
 
 func createDummyFilesAndRender() *Render {
-	os.MkdirAll("templates", os.ModePerm)
+	os.Mkdir("templates", os.ModePerm)
 
 	f, _ := os.Create("templates/layout.base.gohtml")
 	f.Write([]byte("{{ define \"layout/base\" }}<p>layout.base.gohtml</p><p>{{ .Data.foo }}</p>{{ block \"base/content\" . }}{{ end }}{{ end }}"))

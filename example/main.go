@@ -10,7 +10,7 @@ import (
 func main() {
 	r := ron.New()
 
-	htmlRender := ron.HTMLRender()
+	htmlRender := ron.NewHTMLRender()
 	r.Renderer = htmlRender
 
 	r.GET("/", helloWorld)

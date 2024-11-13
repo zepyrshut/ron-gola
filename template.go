@@ -35,7 +35,7 @@ func DefaultHTMLRender() *Render {
 	}
 }
 
-func HTMLRender(opts ...OptionFunc) *Render {
+func NewHTMLRender(opts ...OptionFunc) *Render {
 	config := DefaultHTMLRender()
 	return config.apply(opts...)
 }
