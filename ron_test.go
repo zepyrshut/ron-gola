@@ -9,7 +9,7 @@ import (
 
 type Foo struct {
 	Bar string  `json:"bar"`
-	Taz int     `json:"taz"`
+	Taz int     `json:"something"`
 	Car *string `json:"car"`
 }
 
@@ -19,7 +19,7 @@ func Test_JSON(t *testing.T) {
 		W: rr,
 	}
 
-	expected := `{"bar":"bar","taz":30,"car":null}`
+	expected := `{"bar":"bar","something":30,"car":null}`
 
 	c.JSON(http.StatusOK, Foo{
 		Bar: "bar",
