@@ -20,7 +20,7 @@ type Engine struct {
 	Renderer *Render
 }
 
-func (c *Context) JSON(code int, data Data) {
+func (c *Context) JSON(code int, data any) {
 	c.W.WriteHeader(code)
 	c.W.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(c.W)
@@ -31,9 +31,13 @@ func (c *Context) JSON(code int, data Data) {
 
 func (c *Context) HTML(code int, name string, data Data) {
 	c.W.WriteHeader(code)
-	c.E.Renderer.Template(c.W, name, &TemplateData{
+	c.W.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := c.E.Renderer.Template(c.W, name, &TemplateData{
 		Data: data,
 	})
+	if err != nil {
+		http.Error(c.W, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func New() *Engine {
