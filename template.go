@@ -17,8 +17,8 @@ type (
 		Data Data
 	}
 
-	OptionFunc func(*Render)
-	Render     struct {
+	RenderOptions func(*Render)
+	Render        struct {
 		EnableCache   bool
 		TemplatesPath string
 		Functions     template.FuncMap
@@ -35,12 +35,12 @@ func DefaultHTMLRender() *Render {
 	}
 }
 
-func NewHTMLRender(opts ...OptionFunc) *Render {
+func NewHTMLRender(opts ...RenderOptions) *Render {
 	config := DefaultHTMLRender()
 	return config.apply(opts...)
 }
 
-func (re *Render) apply(opts ...OptionFunc) *Render {
+func (re *Render) apply(opts ...RenderOptions) *Render {
 	for _, opt := range opts {
 		if opt != nil {
 			opt(re)

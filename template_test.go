@@ -33,9 +33,9 @@ func Test_HTMLRender(t *testing.T) {
 
 	tests := []struct {
 		name string
-		arg  OptionFunc
+		arg  RenderOptions
 	}{
-		{"Empty OptionFunc", OptionFunc(func(r *Render) {})},
+		{"Empty OptionFunc", RenderOptions(func(r *Render) {})},
 		{"Nil", nil},
 	}
 
