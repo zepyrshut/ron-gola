@@ -40,7 +40,6 @@ func DefaultEngine() *Engine {
 func New(opts ...EngineOptions) *Engine {
 	config := DefaultEngine()
 	return config.apply(opts...)
-
 }
 
 func (e *Engine) apply(opts ...EngineOptions) *Engine {
@@ -58,6 +57,7 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Engine) Run(addr string) error {
+	newLogger(e.LogLevel)
 	return http.ListenAndServe(addr, e)
 }
 

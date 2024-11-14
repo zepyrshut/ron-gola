@@ -2,13 +2,14 @@ package main
 
 import (
 	"log/slog"
-	"net/http"
 
 	"ron"
 )
 
 func main() {
-	r := ron.New()
+	r := ron.New(func(e *ron.Engine) {
+		e.LogLevel = slog.LevelDebug
+	})
 
 	htmlRender := ron.NewHTMLRender()
 	r.Renderer = htmlRender
@@ -19,11 +20,11 @@ func main() {
 	r.GET("/html", helloWorldHTML)
 	r.GET("/component", componentHTML)
 
-	slog.Info("Server is running at http://localhost:8080")
-	http.ListenAndServe(":8080", r)
+	r.Run(":8080")
 }
 
 func helloWorld(c *ron.Context) {
+	slog.Info("Dummy info message")
 	c.W.Write([]byte("hello world"))
 }
 
