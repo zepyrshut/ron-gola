@@ -14,7 +14,9 @@ func main() {
 	htmlRender := ron.NewHTMLRender()
 	r.Renderer = htmlRender
 
-	r.GET("/", helloWorld)
+	r.Static("static", "static")
+
+	//r.GET("/", helloWorld)
 	r.GET("/json", helloWorldJSON)
 	r.POST("/another", anotherHelloWorld)
 	r.GET("/html", helloWorldHTML)

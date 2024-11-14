@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -83,6 +84,31 @@ func (e *Engine) POST(path string, handler func(*Context)) {
 		}
 		handler(&Context{W: w, R: r, E: e})
 	})
+}
+
+// Static serves static files from a specified directory, accessible through a defined URL path.
+//
+// The `path` parameter represents the URL prefix to access the static files.
+// The `dir` parameter represents the actual filesystem path where the static files are located.
+//
+// Example:
+// Calling r.Static("assets", "./folder") will make the contents of the "./folder" directory
+// accessible in the browser at "/assets". For instance, a file located at "./folder/image.png"
+// would be available at "/assets/image.png" in HTML templates.
+func (e *Engine) Static(path, dir string) {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	if !strings.HasSuffix(path, "/") {
+		path = path + "/"
+	}
+	if !strings.HasPrefix(dir, "./") {
+		dir = "./" + dir
+	}
+
+	fs := http.FileServer(http.Dir(dir))
+	e.mux.Handle(path, http.StripPrefix(path, fs))
+	slog.Info("Static files served", "path", path, "dir", dir)
 }
 
 func (c *Context) JSON(code int, data any) {
