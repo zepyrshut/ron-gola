@@ -7,6 +7,106 @@ import (
 	"testing"
 )
 
+func Test_defaultEngine(t *testing.T) {
+	e := defaultEngine()
+	if e == nil {
+		t.Error("Expected Engine, Actual: nil")
+	}
+}
+
+func Test_New(t *testing.T) {
+	e := New()
+	if e == nil {
+		t.Error("Expected Engine, Actual: nil")
+	}
+	if e.Renderer != nil {
+		t.Error("No expected Renderer, Actual: Renderer")
+	}
+}
+
+func Test_applyEngineConfig(t *testing.T) {
+	e := New(func(e *Engine) {
+		e.Renderer = NewHTMLRender()
+		e.LogLevel = 1
+	})
+	if e.Renderer == nil {
+		t.Error("Expected Renderer, Actual: nil")
+	}
+	if e.LogLevel != 1 {
+		t.Errorf("Expected LogLevel: 1, Actual: %d", e.LogLevel)
+	}
+}
+
+func Test_ServeHTTP(t *testing.T) {
+	e := New()
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/", nil)
+	e.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("Expected status code: %d, Actual: %d", http.StatusNotFound, status)
+	}
+}
+
+func Test_GET(t *testing.T) {
+	e := New()
+	e.GET("/", func(c *Context) {
+		c.W.WriteHeader(http.StatusOK)
+		c.W.Write([]byte("GET"))
+	})
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/", nil)
+	e.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Expected status code: %d, Actual: %d", http.StatusOK, status)
+	}
+
+	if rr.Body.String() != "GET" {
+		t.Errorf("Expected: GET, Actual: %s", rr.Body.String())
+	}
+}
+
+func Test_POST(t *testing.T) {
+	e := New()
+	e.POST("/", func(c *Context) {
+		c.W.WriteHeader(http.StatusOK)
+		c.W.Write([]byte("POST"))
+	})
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/", nil)
+	e.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Expected status code: %d, Actual: %d", http.StatusOK, status)
+	}
+
+	if rr.Body.String() != "POST" {
+		t.Errorf("Expected: POST, Actual: %s", rr.Body.String())
+	}
+}
+
+func Test_Static(t *testing.T) {
+	os.Mkdir("assets", os.ModePerm)
+	f, _ := os.Create("assets/style.css")
+	f.WriteString("body { background-color: red; }")
+	f.Close()
+	defer os.Remove("assets/style.css")
+
+	e := New()
+	e.Static("assets", "assets")
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/assets/style.css", nil)
+	e.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("Expected status code: %d, Actual: %d", http.StatusOK, status)
+	}
+}
+
 type Foo struct {
 	Bar string  `json:"bar"`
 	Taz int     `json:"something"`

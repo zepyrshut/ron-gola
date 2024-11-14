@@ -17,7 +17,7 @@ func Test_DefaultHTMLRender(t *testing.T) {
 		templateCache: make(templateCache),
 	}
 
-	actual := DefaultHTMLRender()
+	actual := defaultHTMLRender()
 	if reflect.DeepEqual(expected, actual) == false {
 		t.Errorf("Expected: %v, Actual: %v", expected, actual)
 	}
@@ -49,7 +49,7 @@ func Test_HTMLRender(t *testing.T) {
 	}
 }
 
-func Test_apply(t *testing.T) {
+func Test_applyRenderConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		expected *Render
@@ -60,7 +60,7 @@ func Test_apply(t *testing.T) {
 			TemplatesPath: "templates",
 			Functions:     make(template.FuncMap),
 			templateCache: make(templateCache),
-		}, DefaultHTMLRender()},
+		}, defaultHTMLRender()},
 		{
 			name: "Two OptionFunc", expected: &Render{
 				EnableCache:   true,
@@ -105,7 +105,7 @@ func createDummyFilesAndRender() *Render {
 	f.Write([]byte("{{ template \"layout/another\" .}}{{ define \"base/content\" }}<p>page.another.gohtml</p><p>{{ .Data.foo }}</p>{{ end }}"))
 	f.Close()
 
-	render := DefaultHTMLRender()
+	render := defaultHTMLRender()
 	return render
 }
 

@@ -31,7 +31,7 @@ type (
 	}
 )
 
-func DefaultEngine() *Engine {
+func defaultEngine() *Engine {
 	return &Engine{
 		mux:      http.NewServeMux(),
 		LogLevel: slog.LevelInfo,
@@ -39,7 +39,7 @@ func DefaultEngine() *Engine {
 }
 
 func New(opts ...EngineOptions) *Engine {
-	config := DefaultEngine()
+	config := defaultEngine()
 	return config.apply(opts...)
 }
 

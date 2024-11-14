@@ -26,7 +26,7 @@ type (
 	}
 )
 
-func DefaultHTMLRender() *Render {
+func defaultHTMLRender() *Render {
 	return &Render{
 		EnableCache:   false,
 		TemplatesPath: "templates",
@@ -36,7 +36,7 @@ func DefaultHTMLRender() *Render {
 }
 
 func NewHTMLRender(opts ...RenderOptions) *Render {
-	config := DefaultHTMLRender()
+	config := defaultHTMLRender()
 	return config.apply(opts...)
 }
 
