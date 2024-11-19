@@ -19,17 +19,17 @@ func Test_New(t *testing.T) {
 	if e == nil {
 		t.Error("Expected Engine, Actual: nil")
 	}
-	if e.Renderer != nil {
+	if e.Render != nil {
 		t.Error("No expected Renderer, Actual: Renderer")
 	}
 }
 
 func Test_applyEngineConfig(t *testing.T) {
 	e := New(func(e *Engine) {
-		e.Renderer = NewHTMLRender()
+		e.Render = NewHTMLRender()
 		e.LogLevel = 1
 	})
-	if e.Renderer == nil {
+	if e.Render == nil {
 		t.Error("Expected Renderer, Actual: nil")
 	}
 	if e.LogLevel != 1 {
@@ -151,15 +151,17 @@ func Test_HTML(t *testing.T) {
 	c := &Context{
 		W: rr,
 		E: &Engine{
-			Renderer: NewHTMLRender(),
+			Render: NewHTMLRender(),
 		},
 	}
 
 	expected := `<h1>foo</h1><h2>bar</h2>`
 
-	c.HTML(http.StatusOK, "page.index.gohtml", Data{
-		"heading1": "foo",
-		"heading2": "bar",
+	c.HTML(http.StatusOK, "page.index.gohtml", &TemplateData{
+		Data: Data{
+			"heading1": "foo",
+			"heading2": "bar",
+		},
 	})
 
 	if status := rr.Code; status != http.StatusOK {

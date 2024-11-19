@@ -27,7 +27,7 @@ type (
 	Engine struct {
 		mux      *http.ServeMux
 		LogLevel slog.Level
-		Renderer *Render
+		Render   *Render
 	}
 )
 
@@ -120,12 +120,10 @@ func (c *Context) JSON(code int, data any) {
 	}
 }
 
-func (c *Context) HTML(code int, name string, data Data) {
+func (c *Context) HTML(code int, name string, td *TemplateData) {
 	c.W.WriteHeader(code)
 	c.W.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := c.E.Renderer.Template(c.W, name, &TemplateData{
-		Data: data,
-	})
+	err := c.E.Render.Template(c.W, name, td)
 	if err != nil {
 		http.Error(c.W, err.Error(), http.StatusInternalServerError)
 	}

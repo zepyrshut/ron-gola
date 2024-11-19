@@ -8,6 +8,7 @@ todo te será familiar.
 
 - Sin dependencias
 - Procesamiento y salida de ficheros HTML
+- Paginación lista para usar
 - Vinculación entrada formulario y JSON a tipos estructurados.
 
 ## Motivación
