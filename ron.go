@@ -17,6 +17,8 @@ type (
 
 	Data map[string]any
 
+	Middleware func(http.Handler) http.Handler
+
 	Context struct {
 		C context.Context
 		W http.ResponseWriter
@@ -25,15 +27,25 @@ type (
 	}
 
 	Engine struct {
-		mux      *http.ServeMux
-		LogLevel slog.Level
-		Render   *Render
+		mux        *http.ServeMux
+		middleware []Middleware
+		groupMux   map[string]*groupMux
+		LogLevel   slog.Level
+		Render     *Render
+	}
+
+	groupMux struct {
+		prefix     string
+		mux        *http.ServeMux
+		middleware []Middleware
+		engine     *Engine
 	}
 )
 
 func defaultEngine() *Engine {
 	return &Engine{
 		mux:      http.NewServeMux(),
+		groupMux: make(map[string]*groupMux),
 		LogLevel: slog.LevelInfo,
 	}
 }
@@ -54,7 +66,16 @@ func (e *Engine) apply(opts ...EngineOptions) *Engine {
 }
 
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	e.handleRequest(w, r)
+	var handler http.Handler = e.mux
+	for prefix, group := range e.groupMux {
+		if strings.HasPrefix(r.URL.Path, prefix) {
+			handler = createStack(group.middleware...)(handler)
+			break
+		}
+	}
+
+	handler = createStack(e.middleware...)(handler)
+	handler.ServeHTTP(w, r)
 }
 
 func (e *Engine) Run(addr string) error {
@@ -62,27 +83,59 @@ func (e *Engine) Run(addr string) error {
 	return http.ListenAndServe(addr, e)
 }
 
-func (e *Engine) handleRequest(w http.ResponseWriter, r *http.Request) {
-	e.mux.ServeHTTP(w, r)
+func createStack(xs ...Middleware) Middleware {
+	return func(next http.Handler) http.Handler {
+		for i := len(xs) - 1; i >= 0; i-- {
+			x := xs[i]
+			next = x(next)
+		}
+		return next
+	}
+}
+
+func (e *Engine) USE(middleware Middleware) {
+	e.middleware = append(e.middleware, middleware)
 }
 
 func (e *Engine) GET(path string, handler func(*Context)) {
-	e.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	e.mux.HandleFunc(fmt.Sprintf("GET %s", path), func(w http.ResponseWriter, r *http.Request) {
 		handler(&Context{W: w, R: r, E: e})
 	})
 }
 
 func (e *Engine) POST(path string, handler func(*Context)) {
-	e.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	e.mux.HandleFunc(fmt.Sprintf("POST %s", path), func(w http.ResponseWriter, r *http.Request) {
 		handler(&Context{W: w, R: r, E: e})
+	})
+}
+
+func (e *Engine) GROUP(prefix string) *groupMux {
+	if _, ok := e.groupMux[prefix]; !ok {
+		e.groupMux[prefix] = &groupMux{
+			prefix: prefix,
+			mux:    http.NewServeMux(),
+			engine: e,
+		}
+
+		e.mux.Handle(prefix+"/", http.StripPrefix(prefix, e.groupMux[prefix].mux))
+	}
+
+	return e.groupMux[prefix]
+}
+
+func (g *groupMux) USE(middleware Middleware) {
+	g.middleware = append(g.middleware, middleware)
+}
+
+func (g *groupMux) GET(path string, handler func(*Context)) {
+	g.mux.HandleFunc(fmt.Sprintf("GET %s", path), func(w http.ResponseWriter, r *http.Request) {
+		handler(&Context{W: w, R: r, E: g.engine})
+	})
+}
+
+func (g *groupMux) POST(path string, handler func(*Context)) {
+	g.mux.HandleFunc(fmt.Sprintf("POST %s", path), func(w http.ResponseWriter, r *http.Request) {
+		handler(&Context{W: w, R: r, E: g.engine})
 	})
 }
 
