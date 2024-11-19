@@ -10,14 +10,14 @@ import (
 func Test_defaultEngine(t *testing.T) {
 	e := defaultEngine()
 	if e == nil {
-		t.Error("Expected engine, Actual: nil")
+		t.Error("Expected Engine, Actual: nil")
 	}
 }
 
 func Test_New(t *testing.T) {
 	e := New()
 	if e == nil {
-		t.Error("Expected engine, Actual: nil")
+		t.Error("Expected Engine, Actual: nil")
 	}
 	if e.Render != nil {
 		t.Error("No expected Renderer, Actual: Renderer")
@@ -85,96 +85,6 @@ func Test_POST(t *testing.T) {
 
 	if rr.Body.String() != "POST" {
 		t.Errorf("Expected: POST, Actual: %s", rr.Body.String())
-	}
-}
-
-func Test_USE(t *testing.T) {
-	e := New()
-	e.USE(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("MIDDLEWARE"))
-			next.ServeHTTP(w, r)
-		})
-	})
-	e.GET("/", func(c *Context) {
-		c.W.WriteHeader(http.StatusOK)
-		c.W.Write([]byte("GET"))
-	})
-
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/", nil)
-	e.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("Expected status code: %d, Actual: %d", http.StatusOK, status)
-	}
-
-	if rr.Body.String() != "MIDDLEWAREGET" {
-		t.Errorf("Expected: MIDDLEWAREGET, Actual: %s", rr.Body.String())
-	}
-}
-
-func Test_GROUP(t *testing.T) {
-	tests := []struct {
-		method       string
-		path         string
-		expectedCode int
-		expectedBody string
-	}{
-		{"GET", "/group/", http.StatusOK, "GET"},
-		{"POST", "/group/", http.StatusOK, "POST"},
-	}
-
-	e := New()
-	g := e.GROUP("/group")
-	g.GET("/", func(c *Context) {
-		c.W.WriteHeader(http.StatusOK)
-		c.W.Write([]byte("GET"))
-	})
-	g.POST("/", func(c *Context) {
-		c.W.WriteHeader(http.StatusOK)
-		c.W.Write([]byte("POST"))
-	})
-
-	for _, tt := range tests {
-		rr := httptest.NewRecorder()
-		req, _ := http.NewRequest(tt.method, tt.path, nil)
-		e.ServeHTTP(rr, req)
-
-		if status := rr.Code; status != tt.expectedCode {
-			t.Errorf("Expected status code: %d, Actual: %d", tt.expectedCode, status)
-		}
-
-		if rr.Body.String() != tt.expectedBody {
-			t.Errorf("Expected: %s, Actual: %s", tt.expectedBody, rr.Body.String())
-		}
-	}
-}
-
-func Test_GROUPUSE(t *testing.T) {
-	e := New()
-	g := e.GROUP("/group")
-	g.USE(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("MIDDLEWARE"))
-			next.ServeHTTP(w, r)
-		})
-	})
-	g.GET("/", func(c *Context) {
-		c.W.WriteHeader(http.StatusOK)
-		c.W.Write([]byte("GET"))
-	})
-
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/group/", nil)
-	e.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("Expected status code: %d, Actual: %d", http.StatusOK, status)
-	}
-
-	if rr.Body.String() != "MIDDLEWAREGET" {
-		t.Errorf("Expected: MIDDLEWAREGET, Actual: %s", rr.Body.String())
 	}
 }
 

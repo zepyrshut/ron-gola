@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Data.title }}</title>
+</head>
+
+<body>
+
+<img src="/static/img/dummy.png">
+
+{{ .Data.message }}
+
+{{ range .Data.elements }}
+<ul>
+
+    <li>
+        {{ .Name }}
+        {{ .Description }}
+    </li>
+</ul>
+
+{{ end }}
+
+{{ if not .Pages.HasPrevious }}
+primera página
+{{ else }}
+<a href="html?page={{ .Pages.First }}">primera</a>
+<a href="html?page={{ .Pages.Previous }}">anterior</a>
+{{ end }}
+
+{{ range .Pages.PageRange 5 }}
+{{ if .Active }}
+<strong>{{ .Number }}</strong>
+{{ else }}
+<a href="html?page={{ .Number }}">{{ .Number }}</a>
+{{ end }}
+{{ end }}
+
+{{ if not .Pages.HasNext }}
+última página
+{{ else }}
+<a href="html?page={{ .Pages.Next }}">siguiente</a>
+<a href="html?page={{ .Pages.Last }}">última</a>
+{{ end }}
+
+
+
+</body>
+
+</html>

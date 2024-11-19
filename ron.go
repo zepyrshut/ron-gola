@@ -24,27 +24,10 @@ type (
 		E *Engine
 	}
 
-	router struct {
-		path    string
-		method  string
-		handler func(*Context)
-		group   *routerGroup
-	}
-
-	routerGroup struct {
-		prefix      string
-		middlewares middlewareChain
-		engine      *Engine
-	}
-
-	middlewareChain []func(http.Handler) http.Handler
-
 	Engine struct {
-		LogLevel    slog.Level
-		Render      *Render
-		mux         *http.ServeMux
-		middlewares middlewareChain
-		router      []router
+		mux      *http.ServeMux
+		LogLevel slog.Level
+		Render   *Render
 	}
 )
 
@@ -70,32 +53,8 @@ func (e *Engine) apply(opts ...EngineOptions) *Engine {
 	return e
 }
 
-func (e *Engine) applyMiddlewares(handler http.Handler) http.Handler {
-	for i := len(e.middlewares) - 1; i >= 0; i-- {
-		handler = e.middlewares[i](handler)
-	}
-	return handler
-}
-
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handler := e.applyMiddlewares(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for _, route := range e.router {
-			if strings.HasPrefix(r.URL.Path, route.path) && r.Method == route.method {
-				groupHandler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					route.handler(&Context{W: w, R: r, E: e})
-				}))
-				if route.group != nil {
-					for i := len(route.group.middlewares) - 1; i >= 0; i-- {
-						groupHandler = route.group.middlewares[i](groupHandler)
-					}
-				}
-				groupHandler.ServeHTTP(w, r)
-				return
-			}
-		}
-		http.NotFound(w, r)
-	}))
-	handler.ServeHTTP(w, r)
+	e.handleRequest(w, r)
 }
 
 func (e *Engine) Run(addr string) error {
@@ -107,35 +66,24 @@ func (e *Engine) handleRequest(w http.ResponseWriter, r *http.Request) {
 	e.mux.ServeHTTP(w, r)
 }
 
-func (e *Engine) USE(middleware ...func(http.Handler) http.Handler) {
-	e.middlewares = append(e.middlewares, middleware...)
-}
-
 func (e *Engine) GET(path string, handler func(*Context)) {
-	e.router = append(e.router, router{path: path, method: http.MethodGet, handler: handler})
+	e.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		handler(&Context{W: w, R: r, E: e})
+	})
 }
 
 func (e *Engine) POST(path string, handler func(*Context)) {
-	e.router = append(e.router, router{path: path, method: http.MethodPost, handler: handler})
-}
-
-func (e *Engine) GROUP(prefix string) *routerGroup {
-	return &routerGroup{
-		prefix: prefix,
-		engine: e,
-	}
-}
-
-func (rg *routerGroup) USE(middleware ...func(http.Handler) http.Handler) {
-	rg.middlewares = append(rg.middlewares, middleware...)
-}
-
-func (rg *routerGroup) GET(path string, handler func(*Context)) {
-	rg.engine.router = append(rg.engine.router, router{path: rg.prefix + path, method: http.MethodGet, handler: handler, group: rg})
-}
-
-func (rg *routerGroup) POST(path string, handler func(*Context)) {
-	rg.engine.router = append(rg.engine.router, router{path: rg.prefix + path, method: http.MethodPost, handler: handler, group: rg})
+	e.mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		handler(&Context{W: w, R: r, E: e})
+	})
 }
 
 // Static serves static files from a specified directory, accessible through a defined URL path.
@@ -159,9 +107,7 @@ func (e *Engine) Static(path, dir string) {
 	}
 
 	fs := http.FileServer(http.Dir(dir))
-	e.GET(path, func(c *Context) {
-		http.StripPrefix(path, fs).ServeHTTP(c.W, c.R)
-	})
+	e.mux.Handle(path, http.StripPrefix(path, fs))
 	slog.Info("Static files served", "path", path, "dir", dir)
 }
 
