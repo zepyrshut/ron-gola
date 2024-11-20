@@ -145,16 +145,15 @@ func (re *Render) createTemplateCache() (templateCache, error) {
 	return cache, nil
 }
 
-// Pages contiene la información de paginación.
+// Pages contains pagination info.
 type Pages struct {
-	// TotalElements son la cantidad de elementos totales a paginar. Pueden ser
-	// total de filas o total de páginas de blog.
+	// TotalElements indicates the total number of elements available for
+	// pagination.
 	TotalElements int
-	// ElementsPerPage muestra la cantidad máxima de elementos a mostrar en una
-	// página.
+	// ElementsPerPage defines the number of elements to display per page in
+	// pagination.
 	ElementsPerPage int
-	// ActualPage es la página actual, utilizado como ayuda para mostrar la
-	// página activa.
+	// ActualPage represents the current page number in pagination.
 	ActualPage int
 }
 
@@ -208,32 +207,26 @@ func (p Pages) CurrentPage() int {
 	return p.ActualPage
 }
 
-// TotalPages devuelve la cantidad total de páginas.
 func (p Pages) TotalPages() int {
 	return (p.TotalElements + p.ElementsPerPage - 1) / p.ElementsPerPage
 }
 
-// IsFirst indica si la página actual es la primera.
 func (p Pages) IsFirst() bool {
 	return p.ActualPage == 1
 }
 
-// IsLast indica si la página actual es la última.
 func (p Pages) IsLast() bool {
 	return p.ActualPage == p.TotalPages()
 }
 
-// HasPrevious indica si hay una página anterior.
 func (p Pages) HasPrevious() bool {
 	return p.ActualPage > 1
 }
 
-// HasNext indica si hay una página siguiente.
 func (p Pages) HasNext() bool {
 	return p.ActualPage < p.TotalPages()
 }
 
-// Previous devuelve el número de la página anterior.
 func (p Pages) Previous() int {
 	if p.ActualPage > p.TotalPages() {
 		return p.TotalPages()
@@ -241,7 +234,6 @@ func (p Pages) Previous() int {
 	return p.ActualPage - 1
 }
 
-// Next devuelve el número de la página siguiente.
 func (p Pages) Next() int {
 	if p.ActualPage < 1 {
 		return 1
@@ -268,10 +260,13 @@ func (p Pages) Last() int {
 
 // Page contiene la información de una página. Utilizado para la barra de
 // paginación que suelen mostrarse en la parte inferior de una lista o tabla.
+
+// Page represents a single page in pagination, including its number and active
+// state. Useful for pagination bar.
 type Page struct {
-	// Number es el número de página.
+	// Number is the numeric identifier of the page in pagination.
 	Number int
-	// Active es un dato lógico que indica si la página es la actual.
+	// Active indicates if the page is the currently selected page.
 	Active bool
 }
 
@@ -279,12 +274,12 @@ func (p Page) NumberOfPage() int {
 	return p.Number
 }
 
-// IsActive indica si la página es la actual.
 func (p Page) IsActive() bool {
 	return p.Active
 }
 
-// PagesRange muestra un rango de páginas a mostrar en la paginación.
+// PageRange generates a slice of Page instances representing a range of pages
+// to be displayed in a pagination bar.
 func (p Pages) PageRange(maxPagesToShow int) []Page {
 	var pages []Page
 	totalPages := p.TotalPages()
