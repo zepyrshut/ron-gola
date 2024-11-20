@@ -41,7 +41,6 @@ func TestMain(m *testing.M) {
 	f.WriteString("console.log('Hello, World!');")
 	f.Close()
 
-
 	code := m.Run()
 
 	os.RemoveAll("templates")
@@ -328,7 +327,7 @@ func Test_Static(t *testing.T) {
 			givenDirectory: "assets",
 			expectedResponse: testhelpers.ExpectedResponse{
 				Code:   http.StatusOK,
-				Header: HeaderJS_UTF8,
+				Header: HeaderAppJS,
 				Body:   "console.log('Hello, World!');",
 			},
 		},
@@ -342,16 +341,25 @@ func Test_Static(t *testing.T) {
 				Body:   "404 page not found\n",
 			},
 		},
+		"invalid directory": {
+			givenPath:      "assets",
+			givenFile:      "style.css",
+			givenDirectory: "nonexistent",
+			expectedResponse: testhelpers.ExpectedResponse{
+				Code:   http.StatusNotFound,
+				Header: HeaderPlain_UTF8,
+				Body:   "404 page not found\n",
+			},
+		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			e := New()
-			e.Static(tt.givenPath, tt.givenDirectory)
-
 			rr := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", fmt.Sprintf("/%s/%s", tt.givenPath, tt.givenFile), nil)
+			e := New()
+			e.Static(tt.givenPath, tt.givenDirectory)
 			e.ServeHTTP(rr, req)
 
 			testhelpers.VerifyResponse(t, rr, tt.expectedResponse)

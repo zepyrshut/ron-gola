@@ -43,11 +43,10 @@ type (
 )
 
 const (
-	ContentType      string = "Content-Type"
 	HeaderJSON       string = "application/json"
 	HeaderHTML_UTF8  string = "text/html; charset=utf-8"
 	HeaderCSS_UTF8   string = "text/css; charset=utf-8"
-	HeaderJS_UTF8    string = "text/javascript; charset=utf-8"
+	HeaderAppJS      string = "application/javascript"
 	HeaderPlain_UTF8 string = "text/plain; charset=utf-8"
 )
 
@@ -157,7 +156,7 @@ func (g *groupMux) POST(path string, handler func(*Context)) {
 // Calling r.Static("assets", "./folder") will make the contents of the "./folder" directory
 // accessible in the browser at "/assets". For instance, a file located at "./folder/image.png"
 // would be available at "/assets/image.png" in HTML templates.
-func (e *Engine) Static(path, dir string) {
+func (e *Engine) Static(path, dir string) error {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
@@ -170,12 +169,14 @@ func (e *Engine) Static(path, dir string) {
 
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		slog.Error("static directory does not exist", "path", path, "dir", dir)
-		return
+		e.mux.Handle(path, http.NotFoundHandler())
+		return err
 	}
 
 	fs := http.FileServer(http.Dir(dir))
 	e.mux.Handle(path, http.StripPrefix(path, fs))
 	slog.Info("static files served", "path", path, "dir", dir)
+	return nil
 }
 
 func (c *Context) JSON(code int, data any) {
