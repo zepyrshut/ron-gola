@@ -1,10 +1,10 @@
 package ron
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"ron/testhelpers"
 	"testing"
@@ -90,37 +90,12 @@ func Test_applyRenderConfig(t *testing.T) {
 
 }
 
-func createDummyFilesAndRender() *Render {
-	os.Mkdir("templates", os.ModePerm)
-
-	f, _ := os.Create("templates/layout.base.gohtml")
-	f.Write([]byte("{{ define \"layout/base\" }}<p>layout.base.gohtml</p><p>{{ .Data.foo }}</p>{{ block \"base/content\" . }}{{ end }}{{ end }}"))
-	f.Close()
-	f, _ = os.Create("templates/layout.another.gohtml")
-	f.Write([]byte("{{ define \"layout/another\" }}<p>layout.another.gohtml</p><p>{{ .Data.bar }}</p>{{ block \"base/content\" . }}{{ end }}{{ end }}"))
-	f.Close()
-	f, _ = os.Create("templates/fragment.button.gohtml")
-	f.Close()
-	f, _ = os.Create("templates/component.list.gohtml")
-	f.Close()
-	f, _ = os.Create("templates/page.index.gohtml")
-	f.Write([]byte("{{ template \"layout/base\" .}}{{ define \"base/content\" }}<p>page.index.gohtml</p><p>{{ .Data.bar }}</p>{{ end }}"))
-	f.Close()
-	f, _ = os.Create("templates/page.another.gohtml")
-	f.Write([]byte("{{ template \"layout/another\" .}}{{ define \"base/content\" }}<p>page.another.gohtml</p><p>{{ .Data.foo }}</p>{{ end }}"))
-	f.Close()
-
-	render := defaultHTMLRender()
-	return render
-}
-
 func Test_findHTMLFiles(t *testing.T) {
-	render := createDummyFilesAndRender()
+	render := defaultHTMLRender()
 	if render == nil {
 		t.Errorf("Error: %v", render)
 		return
 	}
-	defer os.RemoveAll("templates")
 
 	expected := []string{
 		"templates\\layout.base.gohtml",
@@ -128,6 +103,7 @@ func Test_findHTMLFiles(t *testing.T) {
 		"templates\\fragment.button.gohtml",
 		"templates\\component.list.gohtml",
 		"templates\\page.index.gohtml",
+		"templates\\page.tindex.gohtml",
 		"templates\\page.another.gohtml",
 	}
 	actual, err := render.findHTMLFiles()
@@ -144,20 +120,20 @@ func Test_findHTMLFiles(t *testing.T) {
 }
 
 func Test_createTemplateCache(t *testing.T) {
-	render := createDummyFilesAndRender()
+	render := defaultHTMLRender()
 	if render == nil {
 		t.Errorf("Error: %v", render)
+		return
 	}
-	defer os.RemoveAll("templates")
 
 	tc, err := render.createTemplateCache()
-	if err != nil || len(tc) != 3 {
+	if err != nil || len(tc) != 4 {
 		t.Errorf("Error: %v", err)
 	}
 
 	templateNames := []string{
 		"component.list.gohtml",
-		"page.index.gohtml",
+		"page.tindex.gohtml",
 		"page.another.gohtml",
 	}
 
@@ -173,15 +149,15 @@ func Test_TemplateDefault(t *testing.T) {
 		name     string
 		expected string
 	}{
-		{"index", "<p>layout.base.gohtml</p><p>Foo</p><p>page.index.gohtml</p><p>Bar</p>"},
+		{"tindex", "<p>layout.base.gohtml</p><p>Foo</p><p>page.tindex.gohtml</p><p>Bar</p>"},
 		{"another", "<p>layout.another.gohtml</p><p>Bar</p><p>page.another.gohtml</p><p>Foo</p>"},
 	}
 
-	render := createDummyFilesAndRender()
+	render := defaultHTMLRender()
 	if render == nil {
 		t.Errorf("Error: %v", render)
+		return
 	}
-	defer os.RemoveAll("templates")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -205,58 +181,14 @@ type SomethingElements struct {
 }
 
 func createDummyElements() []SomethingElements {
-	return []SomethingElements{
-		{"element 1", "description 1"},
-		{"element 2", "description 2"},
-		{"element 3", "description 3"},
-		{"element 4", "description 4"},
-		{"element 5", "description 5"},
-		{"element 6", "description 6"},
-		{"element 7", "description 7"},
-		{"element 8", "description 8"},
-		{"element 9", "description 9"},
-		{"element 10", "description 10"},
-		{"element 11", "description 11"},
-		{"element 12", "description 12"},
-		{"element 13", "description 13"},
-		{"element 14", "description 14"},
-		{"element 15", "description 15"},
-		{"element 16", "description 16"},
-		{"element 17", "description 17"},
-		{"element 18", "description 18"},
-		{"element 19", "description 19"},
-		{"element 20", "description 20"},
-		{"element 21", "description 21"},
-		{"element 22", "description 22"},
-		{"element 23", "description 23"},
-		{"element 24", "description 24"},
-		{"element 25", "description 25"},
-		{"element 26", "description 26"},
-		{"element 27", "description 27"},
-		{"element 28", "description 28"},
-		{"element 29", "description 29"},
-		{"element 30", "description 30"},
-		{"element 31", "description 31"},
-		{"element 32", "description 32"},
-		{"element 33", "description 33"},
-		{"element 34", "description 34"},
-		{"element 35", "description 35"},
-		{"element 36", "description 36"},
-		{"element 37", "description 37"},
-		{"element 38", "description 38"},
-		{"element 39", "description 39"},
-		{"element 40", "description 40"},
-		{"element 41", "description 41"},
-		{"element 42", "description 42"},
-		{"element 43", "description 43"},
-		{"element 44", "description 44"},
-		{"element 45", "description 45"},
-		{"element 46", "description 46"},
-		{"element 47", "description 47"},
-		{"element 48", "description 48"},
-		{"element 49", "description 49"},
-		{"element 50", "description 50"},
+	var elements []SomethingElements
+	for i := 1; i <= 50; i++ {
+		elements = append(elements, SomethingElements{
+			fmt.Sprintf("element %d", i),
+			fmt.Sprintf("description %d", i),
+		})
 	}
+	return elements
 }
 
 func Test_PaginationParams(t *testing.T) {

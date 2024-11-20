@@ -15,6 +15,22 @@ func TestMain(m *testing.M) {
 	f, _ := os.Create("templates/page.index.gohtml")
 	f.WriteString("<h1>{{.Data.heading1}}</h1><h2>{{.Data.heading2}}</h2>")
 	f.Close()
+	f, _ = os.Create("templates/layout.base.gohtml")
+	f.Write([]byte("{{ define \"layout/base\" }}<p>layout.base.gohtml</p><p>{{ .Data.foo }}</p>{{ block \"base/content\" . }}{{ end }}{{ end }}"))
+	f.Close()
+	f, _ = os.Create("templates/layout.another.gohtml")
+	f.Write([]byte("{{ define \"layout/another\" }}<p>layout.another.gohtml</p><p>{{ .Data.bar }}</p>{{ block \"base/content\" . }}{{ end }}{{ end }}"))
+	f.Close()
+	f, _ = os.Create("templates/fragment.button.gohtml")
+	f.Close()
+	f, _ = os.Create("templates/component.list.gohtml")
+	f.Close()
+	f, _ = os.Create("templates/page.tindex.gohtml")
+	f.Write([]byte("{{ template \"layout/base\" .}}{{ define \"base/content\" }}<p>page.tindex.gohtml</p><p>{{ .Data.bar }}</p>{{ end }}"))
+	f.Close()
+	f, _ = os.Create("templates/page.another.gohtml")
+	f.Write([]byte("{{ template \"layout/another\" .}}{{ define \"base/content\" }}<p>page.another.gohtml</p><p>{{ .Data.foo }}</p>{{ end }}"))
+	f.Close()
 
 	os.Mkdir("assets", os.ModePerm)
 	f, _ = os.Create("assets/style.css")
@@ -24,6 +40,7 @@ func TestMain(m *testing.M) {
 	f, _ = os.Create("assets/script.js")
 	f.WriteString("console.log('Hello, World!');")
 	f.Close()
+
 
 	code := m.Run()
 
