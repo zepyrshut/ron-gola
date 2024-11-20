@@ -43,10 +43,12 @@ type (
 )
 
 const (
-	contentType      string = "Content-Type"
-	headerJSON       string = "application/json"
-	headerHTML_UTF8  string = "text/html; charset=utf-8"
-	headerPlain_UTF8 string = "text/plain; charset=utf-8"
+	ContentType      string = "Content-Type"
+	HeaderJSON       string = "application/json"
+	HeaderHTML_UTF8  string = "text/html; charset=utf-8"
+	HeaderCSS_UTF8   string = "text/css; charset=utf-8"
+	HeaderJS_UTF8    string = "text/javascript; charset=utf-8"
+	HeaderPlain_UTF8 string = "text/plain; charset=utf-8"
 )
 
 func defaultEngine() *Engine {
@@ -166,9 +168,14 @@ func (e *Engine) Static(path, dir string) {
 		dir = "./" + dir
 	}
 
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		slog.Error("static directory does not exist", "path", path, "dir", dir)
+		return
+	}
+
 	fs := http.FileServer(http.Dir(dir))
 	e.mux.Handle(path, http.StripPrefix(path, fs))
-	slog.Info("Static files served", "path", path, "dir", dir)
+	slog.Info("static files served", "path", path, "dir", dir)
 }
 
 func (c *Context) JSON(code int, data any) {

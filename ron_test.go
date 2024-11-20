@@ -1,10 +1,12 @@
 package ron
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"ron/testhelpers"
 	"testing"
 )
 
@@ -14,9 +16,20 @@ func TestMain(m *testing.M) {
 	f.WriteString("<h1>{{.Data.heading1}}</h1><h2>{{.Data.heading2}}</h2>")
 	f.Close()
 
+	os.Mkdir("assets", os.ModePerm)
+	f, _ = os.Create("assets/style.css")
+	f.WriteString("body { background-color: red; }")
+	f.Close()
+
+	f, _ = os.Create("assets/script.js")
+	f.WriteString("console.log('Hello, World!');")
+	f.Close()
+
 	code := m.Run()
 
 	os.RemoveAll("templates")
+	os.RemoveAll("assets")
+
 	os.Exit(code)
 }
 
@@ -276,21 +289,56 @@ func Test_GROUPPOST(t *testing.T) {
 }
 
 func Test_Static(t *testing.T) {
-	os.Mkdir("assets", os.ModePerm)
-	f, _ := os.Create("assets/style.css")
-	f.WriteString("body { background-color: red; }")
-	f.Close()
-	defer os.RemoveAll("assets")
+	tests := map[string]struct {
+		givenPath        string
+		givenFile        string
+		givenDirectory   string
+		expectedResponse testhelpers.ExpectedResponse
+	}{
+		"valid css path": {
+			givenPath:      "assets",
+			givenFile:      "style.css",
+			givenDirectory: "assets",
+			expectedResponse: testhelpers.ExpectedResponse{
+				Code:   http.StatusOK,
+				Header: HeaderCSS_UTF8,
+				Body:   "body { background-color: red; }",
+			},
+		},
+		"valid js path": {
+			givenPath:      "assets",
+			givenFile:      "script.js",
+			givenDirectory: "assets",
+			expectedResponse: testhelpers.ExpectedResponse{
+				Code:   http.StatusOK,
+				Header: HeaderJS_UTF8,
+				Body:   "console.log('Hello, World!');",
+			},
+		},
+		"invalid path": {
+			givenPath:      "assets",
+			givenFile:      "nonexistent.css",
+			givenDirectory: "assets",
+			expectedResponse: testhelpers.ExpectedResponse{
+				Code:   http.StatusNotFound,
+				Header: HeaderPlain_UTF8,
+				Body:   "404 page not found\n",
+			},
+		},
+	}
 
-	e := New()
-	e.Static("assets", "assets")
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			e := New()
+			e.Static(tt.givenPath, tt.givenDirectory)
 
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/assets/style.css", nil)
-	e.ServeHTTP(rr, req)
+			rr := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", fmt.Sprintf("/%s/%s", tt.givenPath, tt.givenFile), nil)
+			e.ServeHTTP(rr, req)
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("Expected status code: %d, Actual: %d", http.StatusOK, status)
+			testhelpers.VerifyResponse(t, rr, tt.expectedResponse)
+		})
 	}
 }
 
@@ -302,25 +350,27 @@ type Foo struct {
 
 func Test_JSON(t *testing.T) {
 	tests := map[string]struct {
-		givenCode      int
-		givenData      any
-		expectedCode   int
-		expectedHeader string
-		expectedBody   string
+		givenCode        int
+		givenData        any
+		expectedResponse testhelpers.ExpectedResponse
 	}{
 		"valid JSON": {
-			givenCode:      http.StatusOK,
-			givenData:      Foo{Bar: "bar", Taz: 30, Car: nil},
-			expectedCode:   http.StatusOK,
-			expectedHeader: headerJSON,
-			expectedBody:   `{"bar":"bar","something":30,"car":null}` + "\n",
+			givenCode: http.StatusOK,
+			givenData: Foo{Bar: "bar", Taz: 30, Car: nil},
+			expectedResponse: testhelpers.ExpectedResponse{
+				Code:   http.StatusOK,
+				Header: HeaderJSON,
+				Body:   `{"bar":"bar","something":30,"car":null}` + "\n",
+			},
 		},
 		"invalid JSON": {
-			givenCode:      http.StatusOK,
-			givenData:      make(chan int),
-			expectedCode:   http.StatusInternalServerError,
-			expectedHeader: headerPlain_UTF8,
-			expectedBody:   "json: unsupported type: chan int\n",
+			givenCode: http.StatusOK,
+			givenData: make(chan int),
+			expectedResponse: testhelpers.ExpectedResponse{
+				Code:   http.StatusInternalServerError,
+				Header: HeaderPlain_UTF8,
+				Body:   "json: unsupported type: chan int\n",
+			},
 		},
 	}
 
@@ -334,45 +384,37 @@ func Test_JSON(t *testing.T) {
 
 			c.JSON(tt.givenCode, tt.givenData)
 
-			if status := rr.Code; status != tt.expectedCode {
-				t.Errorf("Expected status code: %d, Actual: %d", tt.expectedCode, status)
-			}
-
-			if rr.Header().Get(contentType) != tt.expectedHeader {
-				t.Errorf("Expected Content-Type: %s, Actual: %s", tt.expectedHeader, rr.Header().Get(contentType))
-			}
-
-			if rr.Body.String() != tt.expectedBody {
-				t.Errorf("Expected body: %q, Actual: %q", tt.expectedBody, rr.Body.String())
-			}
+			testhelpers.VerifyResponse(t, rr, tt.expectedResponse)
 		})
 	}
 }
 
 func Test_HTML(t *testing.T) {
 	tests := map[string]struct {
-		givenCode      int
-		givenTemplate  string
-		givenData      *TemplateData
-		expectedCode   int
-		expectedHeader string
-		expectedBody   string
+		givenCode        int
+		givenTemplate    string
+		givenData        *TemplateData
+		expectedResponse testhelpers.ExpectedResponse
 	}{
 		"valid HTML": {
-			givenCode:      http.StatusOK,
-			givenTemplate:  "page.index.gohtml",
-			givenData:      &TemplateData{Data: Data{"heading1": "foo", "heading2": "bar"}},
-			expectedCode:   http.StatusOK,
-			expectedHeader: headerHTML_UTF8,
-			expectedBody:   "<h1>foo</h1><h2>bar</h2>",
+			givenCode:     http.StatusOK,
+			givenTemplate: "page.index.gohtml",
+			givenData:     &TemplateData{Data: Data{"heading1": "foo", "heading2": "bar"}},
+			expectedResponse: testhelpers.ExpectedResponse{
+				Code:   http.StatusOK,
+				Header: HeaderHTML_UTF8,
+				Body:   "<h1>foo</h1><h2>bar</h2>",
+			},
 		},
 		"template not found": {
-			givenCode:      http.StatusOK,
-			givenTemplate:  "nonexistent.gohtml",
-			givenData:      &TemplateData{Data: Data{"heading1": "foo", "heading2": "bar"}},
-			expectedCode:   http.StatusInternalServerError,
-			expectedHeader: headerPlain_UTF8,
-			expectedBody:   "can't get template from cache\n",
+			givenCode:     http.StatusOK,
+			givenTemplate: "nonexistent.gohtml",
+			givenData:     &TemplateData{Data: Data{"heading1": "foo", "heading2": "bar"}},
+			expectedResponse: testhelpers.ExpectedResponse{
+				Code:   http.StatusInternalServerError,
+				Header: HeaderPlain_UTF8,
+				Body:   "can't get template from cache\n",
+			},
 		},
 	}
 
@@ -389,17 +431,7 @@ func Test_HTML(t *testing.T) {
 
 			c.HTML(tt.givenCode, tt.givenTemplate, tt.givenData)
 
-			if status := rr.Code; status != tt.expectedCode {
-				t.Errorf("Expected status code: %d, Actual: %d", tt.expectedCode, status)
-			}
-
-			if rr.Header().Get(contentType) != tt.expectedHeader {
-				t.Errorf("Expected Content-Type: %s, Actual: %s", tt.expectedHeader, rr.Header().Get(contentType))
-			}
-
-			if rr.Body.String() != tt.expectedBody {
-				t.Errorf("Expected body: %q, Actual: %q", tt.expectedBody, rr.Body.String())
-			}
+			testhelpers.VerifyResponse(t, rr, tt.expectedResponse)
 		})
 	}
 
