@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (c *Context) BindJSON(v any) error {
+func (c *CTX) BindJSON(v any) error {
 	if c.R.Header.Get("Content-Type") != "application/json" {
 		return http.ErrNotSupported
 	}
@@ -18,7 +18,7 @@ func (c *Context) BindJSON(v any) error {
 	return decoder.Decode(v)
 }
 
-func (c *Context) BindForm(v interface{}) error {
+func (c *CTX) BindForm(v interface{}) error {
 	if err := c.R.ParseForm(); err != nil {
 		return err
 	}

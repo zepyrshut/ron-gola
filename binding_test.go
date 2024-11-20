@@ -55,7 +55,7 @@ func Test_BindJSON(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 
-	c := &Context{
+	c := &CTX{
 		W: rr,
 		R: req,
 	}
@@ -89,7 +89,7 @@ func Test_BindForm(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	c := &Context{
+	c := &CTX{
 		W: rr,
 		R: req,
 	}

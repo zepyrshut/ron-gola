@@ -19,8 +19,7 @@ type (
 
 	Middleware func(http.Handler) http.Handler
 
-	Context struct {
-		C context.Context
+	CTX struct {
 		W http.ResponseWriter
 		R *http.Request
 		E *Engine
@@ -105,15 +104,15 @@ func (e *Engine) USE(middleware Middleware) {
 	e.middleware = append(e.middleware, middleware)
 }
 
-func (e *Engine) GET(path string, handler func(*Context)) {
+func (e *Engine) GET(path string, handler func(*CTX, context.Context)) {
 	e.mux.HandleFunc(fmt.Sprintf("GET %s", path), func(w http.ResponseWriter, r *http.Request) {
-		handler(&Context{W: w, R: r, E: e})
+		handler(&CTX{W: w, R: r, E: e}, r.Context())
 	})
 }
 
-func (e *Engine) POST(path string, handler func(*Context)) {
+func (e *Engine) POST(path string, handler func(*CTX, context.Context)) {
 	e.mux.HandleFunc(fmt.Sprintf("POST %s", path), func(w http.ResponseWriter, r *http.Request) {
-		handler(&Context{W: w, R: r, E: e})
+		handler(&CTX{W: w, R: r, E: e}, r.Context())
 	})
 }
 
@@ -135,15 +134,15 @@ func (g *groupMux) USE(middleware Middleware) {
 	g.middleware = append(g.middleware, middleware)
 }
 
-func (g *groupMux) GET(path string, handler func(*Context)) {
+func (g *groupMux) GET(path string, handler func(*CTX, context.Context)) {
 	g.mux.HandleFunc(fmt.Sprintf("GET %s", path), func(w http.ResponseWriter, r *http.Request) {
-		handler(&Context{W: w, R: r, E: g.engine})
+		handler(&CTX{W: w, R: r, E: g.engine}, r.Context())
 	})
 }
 
-func (g *groupMux) POST(path string, handler func(*Context)) {
+func (g *groupMux) POST(path string, handler func(*CTX, context.Context)) {
 	g.mux.HandleFunc(fmt.Sprintf("POST %s", path), func(w http.ResponseWriter, r *http.Request) {
-		handler(&Context{W: w, R: r, E: g.engine})
+		handler(&CTX{W: w, R: r, E: g.engine}, r.Context())
 	})
 }
 
@@ -179,7 +178,7 @@ func (e *Engine) Static(path, dir string) error {
 	return nil
 }
 
-func (c *Context) JSON(code int, data any) {
+func (c *CTX) JSON(code int, data any) {
 	c.W.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(c.W)
 	if err := encoder.Encode(data); err != nil {
@@ -189,7 +188,7 @@ func (c *Context) JSON(code int, data any) {
 	c.W.WriteHeader(code)
 }
 
-func (c *Context) HTML(code int, name string, td *TemplateData) {
+func (c *CTX) HTML(code int, name string, td *TemplateData) {
 	c.W.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err := c.E.Render.Template(c.W, name, td)
 	if err != nil {

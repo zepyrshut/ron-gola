@@ -1,6 +1,7 @@
 package ron
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -82,7 +83,7 @@ func Test_applyEngineConfig(t *testing.T) {
 func Test_ServeHTTP(t *testing.T) {
 	e := New()
 	api := e.GROUP("/api")
-	api.GET("/index", func(c *Context) {
+	api.GET("/index", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("GET API"))
 	})
@@ -170,19 +171,19 @@ func Test_GET(t *testing.T) {
 		{"resource with param", "GET", "/api/v1/resource/1", http.StatusOK, "GET Resource"},
 	}
 
-	e.GET("/", func(c *Context) {
+	e.GET("/", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("GET Root"))
 	})
-	e.GET("/api", func(c *Context) {
+	e.GET("/api", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("GET API"))
 	})
-	e.GET("/api/v1", func(c *Context) {
+	e.GET("/api/v1", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("GET API v1"))
 	})
-	e.GET("/api/v1/resource/{id}", func(c *Context) {
+	e.GET("/api/v1/resource/{id}", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("GET Resource"))
 	})
@@ -206,7 +207,7 @@ func Test_GET(t *testing.T) {
 
 func Test_POST(t *testing.T) {
 	e := New()
-	e.POST("/", func(c *Context) {
+	e.POST("/", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("POST"))
 	})
@@ -227,7 +228,7 @@ func Test_POST(t *testing.T) {
 func Test_GROUP(t *testing.T) {
 	e := New()
 	api := e.GROUP("/api")
-	api.GET("/index", func(c *Context) {
+	api.GET("/index", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("GET API"))
 	})
@@ -247,7 +248,7 @@ func Test_GROUP(t *testing.T) {
 
 func Test_GROUPWithMiddleware(t *testing.T) {
 	e := New()
-	e.GET("/index", func(c *Context) {
+	e.GET("/index", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("GET Root"))
 	})
@@ -265,7 +266,7 @@ func Test_GROUPWithMiddleware(t *testing.T) {
 			next.ServeHTTP(w, r)
 		})
 	})
-	api.GET("/index", func(c *Context) {
+	api.GET("/index", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("GET API"))
 	})
@@ -286,7 +287,7 @@ func Test_GROUPWithMiddleware(t *testing.T) {
 func Test_GROUPPOST(t *testing.T) {
 	e := New()
 	api := e.GROUP("/api")
-	api.POST("/index", func(c *Context) {
+	api.POST("/index", func(c *CTX, ctx context.Context) {
 		c.W.WriteHeader(http.StatusOK)
 		c.W.Write([]byte("POST API"))
 	})
@@ -403,7 +404,7 @@ func Test_JSON(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			rr := httptest.NewRecorder()
-			c := &Context{
+			c := &CTX{
 				W: rr,
 			}
 
@@ -447,7 +448,7 @@ func Test_HTML(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			rr := httptest.NewRecorder()
-			c := &Context{
+			c := &CTX{
 				W: rr,
 				E: &Engine{
 					Render: NewHTMLRender(),
