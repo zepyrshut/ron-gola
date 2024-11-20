@@ -8,6 +8,18 @@ import (
 	"testing"
 )
 
+func TestMain(m *testing.M) {
+	os.Mkdir("templates", os.ModePerm)
+	f, _ := os.Create("templates/page.index.gohtml")
+	f.WriteString("<h1>{{.Data.heading1}}</h1><h2>{{.Data.heading2}}</h2>")
+	f.Close()
+
+	code := m.Run()
+
+	os.RemoveAll("templates")
+	os.Exit(code)
+}
+
 func Test_defaultEngine(t *testing.T) {
 	e := defaultEngine()
 	if e == nil {
@@ -268,7 +280,7 @@ func Test_Static(t *testing.T) {
 	f, _ := os.Create("assets/style.css")
 	f.WriteString("body { background-color: red; }")
 	f.Close()
-	defer os.Remove("assets/style.css")
+	defer os.RemoveAll("assets")
 
 	e := New()
 	e.Static("assets", "assets")
@@ -289,47 +301,45 @@ type Foo struct {
 }
 
 func Test_JSON(t *testing.T) {
-	tests := []struct {
-		name           string
-		code           int
-		data           any
-		expectedStatus int
-		expectedBody   string
+	tests := map[string]struct {
+		givenCode      int
+		givenData      any
+		expectedCode   int
 		expectedHeader string
+		expectedBody   string
 	}{
-		{
-			name:           "valid JSON",
-			code:           http.StatusOK,
-			data:           Foo{Bar: "bar", Taz: 30, Car: nil},
-			expectedStatus: http.StatusOK,
+		"valid JSON": {
+			givenCode:      http.StatusOK,
+			givenData:      Foo{Bar: "bar", Taz: 30, Car: nil},
+			expectedCode:   http.StatusOK,
+			expectedHeader: headerJSON,
 			expectedBody:   `{"bar":"bar","something":30,"car":null}` + "\n",
-			expectedHeader: "application/json",
 		},
-		{
-			name:           "invalid JSON",
-			code:           http.StatusOK,
-			data:           make(chan int),
-			expectedStatus: http.StatusInternalServerError,
+		"invalid JSON": {
+			givenCode:      http.StatusOK,
+			givenData:      make(chan int),
+			expectedCode:   http.StatusInternalServerError,
+			expectedHeader: headerPlain_UTF8,
 			expectedBody:   "json: unsupported type: chan int\n",
-			expectedHeader: "application/json",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			rr := httptest.NewRecorder()
 			c := &Context{
 				W: rr,
 			}
 
-			c.JSON(tt.code, tt.data)
+			c.JSON(tt.givenCode, tt.givenData)
 
-			if status := rr.Code; status != tt.expectedStatus {
-				t.Errorf("Expected status code: %d, Actual: %d", tt.expectedStatus, status)
+			if status := rr.Code; status != tt.expectedCode {
+				t.Errorf("Expected status code: %d, Actual: %d", tt.expectedCode, status)
 			}
 
-			if rr.Header().Get("Content-Type") != tt.expectedHeader {
-				t.Errorf("Expected Content-Type: %s, Actual: %s", tt.expectedHeader, rr.Header().Get("Content-Type"))
+			if rr.Header().Get(contentType) != tt.expectedHeader {
+				t.Errorf("Expected Content-Type: %s, Actual: %s", tt.expectedHeader, rr.Header().Get(contentType))
 			}
 
 			if rr.Body.String() != tt.expectedBody {
@@ -340,43 +350,35 @@ func Test_JSON(t *testing.T) {
 }
 
 func Test_HTML(t *testing.T) {
-	os.Mkdir("templates", os.ModePerm)
-	f, _ := os.Create("templates/page.index.gohtml")
-	f.WriteString("<h1>{{.Data.heading1}}</h1><h2>{{.Data.heading2}}</h2>")
-	f.Close()
-	defer os.RemoveAll("templates")
-
-	tests := []struct {
-		name           string
-		code           int
-		templateName   string
-		templateData   *TemplateData
-		expectedStatus int
-		expectedBody   string
+	tests := map[string]struct {
+		givenCode      int
+		givenTemplate  string
+		givenData      *TemplateData
+		expectedCode   int
 		expectedHeader string
+		expectedBody   string
 	}{
-		{
-			name:           "valid HTML",
-			code:           http.StatusOK,
-			templateName:   "page.index.gohtml",
-			templateData:   &TemplateData{Data: Data{"heading1": "foo", "heading2": "bar"}},
-			expectedStatus: http.StatusOK,
-			expectedBody:   `<h1>foo</h1><h2>bar</h2>`,
-			expectedHeader: "text/html; charset=utf-8",
+		"valid HTML": {
+			givenCode:      http.StatusOK,
+			givenTemplate:  "page.index.gohtml",
+			givenData:      &TemplateData{Data: Data{"heading1": "foo", "heading2": "bar"}},
+			expectedCode:   http.StatusOK,
+			expectedHeader: headerHTML_UTF8,
+			expectedBody:   "<h1>foo</h1><h2>bar</h2>",
 		},
-		{
-			name:           "template not found",
-			code:           http.StatusOK,
-			templateName:   "nonexistent.gohtml",
-			templateData:   &TemplateData{Data: Data{"heading1": "foo", "heading2": "bar"}},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "open templates/nonexistent.gohtml: no such file or directory\n",
-			expectedHeader: "text/html; charset=utf-8",
+		"template not found": {
+			givenCode:      http.StatusOK,
+			givenTemplate:  "nonexistent.gohtml",
+			givenData:      &TemplateData{Data: Data{"heading1": "foo", "heading2": "bar"}},
+			expectedCode:   http.StatusInternalServerError,
+			expectedHeader: headerPlain_UTF8,
+			expectedBody:   "can't get template from cache\n",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			rr := httptest.NewRecorder()
 			c := &Context{
 				W: rr,
@@ -385,14 +387,14 @@ func Test_HTML(t *testing.T) {
 				},
 			}
 
-			c.HTML(tt.code, tt.templateName, tt.templateData)
+			c.HTML(tt.givenCode, tt.givenTemplate, tt.givenData)
 
-			if status := rr.Code; status != tt.expectedStatus {
-				t.Errorf("Expected status code: %d, Actual: %d", tt.expectedStatus, status)
+			if status := rr.Code; status != tt.expectedCode {
+				t.Errorf("Expected status code: %d, Actual: %d", tt.expectedCode, status)
 			}
 
-			if rr.Header().Get("Content-Type") != tt.expectedHeader {
-				t.Errorf("Expected Content-Type: %s, Actual: %s", tt.expectedHeader, rr.Header().Get("Content-Type"))
+			if rr.Header().Get(contentType) != tt.expectedHeader {
+				t.Errorf("Expected Content-Type: %s, Actual: %s", tt.expectedHeader, rr.Header().Get(contentType))
 			}
 
 			if rr.Body.String() != tt.expectedBody {
@@ -400,6 +402,7 @@ func Test_HTML(t *testing.T) {
 			}
 		})
 	}
+
 }
 
 func Test_newLogger(t *testing.T) {

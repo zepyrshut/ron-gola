@@ -42,6 +42,13 @@ type (
 	}
 )
 
+const (
+	contentType      string = "Content-Type"
+	headerJSON       string = "application/json"
+	headerHTML_UTF8  string = "text/html; charset=utf-8"
+	headerPlain_UTF8 string = "text/plain; charset=utf-8"
+)
+
 func defaultEngine() *Engine {
 	return &Engine{
 		mux:      http.NewServeMux(),
@@ -165,21 +172,23 @@ func (e *Engine) Static(path, dir string) {
 }
 
 func (c *Context) JSON(code int, data any) {
-	c.W.WriteHeader(code)
 	c.W.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(c.W)
 	if err := encoder.Encode(data); err != nil {
 		http.Error(c.W, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	c.W.WriteHeader(code)
 }
 
 func (c *Context) HTML(code int, name string, td *TemplateData) {
-	c.W.WriteHeader(code)
 	c.W.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err := c.E.Render.Template(c.W, name, td)
 	if err != nil {
 		http.Error(c.W, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	c.W.WriteHeader(code)
 }
 
 func newLogger(level slog.Level) {
