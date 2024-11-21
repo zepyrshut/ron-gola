@@ -5,6 +5,7 @@ import (
 	"errors"
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"reflect"
@@ -63,13 +64,9 @@ func (re *Render) Template(w http.ResponseWriter, tmpl string, td *TemplateData)
 		td = &TemplateData{}
 	}
 
-	if re.EnableCache {
-		tc = re.templateCache
-	} else {
-		tc, err = re.createTemplateCache()
-		if err != nil {
-			return err
-		}
+	tc, err = re.getTemplateCache()
+	if err != nil {
+		return err
 	}
 
 	t, ok := tc[tmpl]
@@ -78,17 +75,30 @@ func (re *Render) Template(w http.ResponseWriter, tmpl string, td *TemplateData)
 	}
 
 	buf := new(bytes.Buffer)
-	err = t.Execute(buf, td)
-	if err != nil {
+	if err = t.Execute(buf, td); err != nil {
 		return err
 	}
 
-	_, err = buf.WriteTo(w)
-	if err != nil {
+	if _, err = buf.WriteTo(w); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (re *Render) getTemplateCache() (templateCache, error) {
+	slog.Debug("template cache", "tc status", re.EnableCache, "tc", len(re.templateCache))
+	if len(re.templateCache) == 0 {
+		cachedTemplates, err := re.createTemplateCache()
+		if err != nil {
+			return nil, err
+		}
+		re.templateCache = cachedTemplates
+	}
+	if re.EnableCache {
+		return re.templateCache, nil
+	}
+	return re.createTemplateCache()
 }
 
 func (re *Render) findHTMLFiles() ([]string, error) {

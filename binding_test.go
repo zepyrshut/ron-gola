@@ -56,7 +56,7 @@ func Test_BindJSON(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	c := &CTX{
-		W: rr,
+		W: &responseWriterWrapper{ResponseWriter: rr},
 		R: req,
 	}
 
@@ -90,7 +90,7 @@ func Test_BindForm(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	c := &CTX{
-		W: rr,
+		W: &responseWriterWrapper{ResponseWriter: rr},
 		R: req,
 	}
 

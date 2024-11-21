@@ -3,6 +3,7 @@ package ron
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,17 +20,27 @@ type (
 
 	Middleware func(http.Handler) http.Handler
 
+	responseWriterWrapper struct {
+		http.ResponseWriter
+		headerWritten bool
+	}
+
 	CTX struct {
-		W http.ResponseWriter
+		W *responseWriterWrapper
 		R *http.Request
 		E *Engine
+	}
+
+	Config struct {
+		Timeout  time.Duration
+		LogLevel slog.Level
 	}
 
 	Engine struct {
 		mux        *http.ServeMux
 		middleware []Middleware
 		groupMux   map[string]*groupMux
-		LogLevel   slog.Level
+		Config     *Config
 		Render     *Render
 	}
 
@@ -49,11 +60,29 @@ const (
 	HeaderPlain_UTF8 string = "text/plain; charset=utf-8"
 )
 
+func (w *responseWriterWrapper) WriteHeader(code int) {
+	if !w.headerWritten {
+		w.headerWritten = true
+		w.ResponseWriter.WriteHeader(code)
+	}
+}
+
+func (w *responseWriterWrapper) Write(b []byte) (int, error) {
+	if !w.headerWritten {
+		w.headerWritten = true
+		w.ResponseWriter.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(b)
+}
+
 func defaultEngine() *Engine {
 	return &Engine{
 		mux:      http.NewServeMux(),
 		groupMux: make(map[string]*groupMux),
-		LogLevel: slog.LevelInfo,
+		Config: &Config{
+			Timeout:  time.Second * 30,
+			LogLevel: slog.LevelDebug,
+		},
 	}
 }
 
@@ -81,12 +110,14 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	e.middleware = append(e.middleware, e.timeOutMiddleware())
 	handler = createStack(e.middleware...)(handler)
-	handler.ServeHTTP(w, r)
+	rw := &responseWriterWrapper{ResponseWriter: w}
+	handler.ServeHTTP(rw, r)
 }
 
 func (e *Engine) Run(addr string) error {
-	newLogger(e.LogLevel)
+	newLogger(e.Config.LogLevel)
 	return http.ListenAndServe(addr, e)
 }
 
@@ -100,19 +131,47 @@ func createStack(xs ...Middleware) Middleware {
 	}
 }
 
+func (e *Engine) timeOutMiddleware() Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), e.Config.Timeout)
+			defer cancel()
+
+			r = r.WithContext(ctx)
+			done := make(chan struct{})
+
+			go func() {
+				next.ServeHTTP(w, r)
+				close(done)
+			}()
+
+			select {
+			case <-ctx.Done():
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+					slog.Debug("timeout reached")
+					http.Error(w, "Request timed out", http.StatusGatewayTimeout)
+				}
+			case <-done:
+			}
+		})
+	}
+}
+
 func (e *Engine) USE(middleware Middleware) {
 	e.middleware = append(e.middleware, middleware)
 }
 
 func (e *Engine) GET(path string, handler func(*CTX, context.Context)) {
 	e.mux.HandleFunc(fmt.Sprintf("GET %s", path), func(w http.ResponseWriter, r *http.Request) {
-		handler(&CTX{W: w, R: r, E: e}, r.Context())
+		rw := &responseWriterWrapper{ResponseWriter: w}
+		handler(&CTX{W: rw, R: r, E: e}, r.Context())
 	})
 }
 
 func (e *Engine) POST(path string, handler func(*CTX, context.Context)) {
 	e.mux.HandleFunc(fmt.Sprintf("POST %s", path), func(w http.ResponseWriter, r *http.Request) {
-		handler(&CTX{W: w, R: r, E: e}, r.Context())
+		rw := &responseWriterWrapper{ResponseWriter: w}
+		handler(&CTX{W: rw, R: r, E: e}, r.Context())
 	})
 }
 
@@ -136,13 +195,15 @@ func (g *groupMux) USE(middleware Middleware) {
 
 func (g *groupMux) GET(path string, handler func(*CTX, context.Context)) {
 	g.mux.HandleFunc(fmt.Sprintf("GET %s", path), func(w http.ResponseWriter, r *http.Request) {
-		handler(&CTX{W: w, R: r, E: g.engine}, r.Context())
+		rw := &responseWriterWrapper{ResponseWriter: w}
+		handler(&CTX{W: rw, R: r, E: g.engine}, r.Context())
 	})
 }
 
 func (g *groupMux) POST(path string, handler func(*CTX, context.Context)) {
 	g.mux.HandleFunc(fmt.Sprintf("POST %s", path), func(w http.ResponseWriter, r *http.Request) {
-		handler(&CTX{W: w, R: r, E: g.engine}, r.Context())
+		rw := &responseWriterWrapper{ResponseWriter: w}
+		handler(&CTX{W: rw, R: r, E: g.engine}, r.Context())
 	})
 }
 

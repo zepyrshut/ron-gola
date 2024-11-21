@@ -70,13 +70,13 @@ func Test_New(t *testing.T) {
 func Test_applyEngineConfig(t *testing.T) {
 	e := New(func(e *Engine) {
 		e.Render = NewHTMLRender()
-		e.LogLevel = 1
+		e.Config.LogLevel = slog.LevelInfo
 	})
 	if e.Render == nil {
 		t.Error("Expected Renderer, Actual: nil")
 	}
-	if e.LogLevel != 1 {
-		t.Errorf("Expected LogLevel: 1, Actual: %d", e.LogLevel)
+	if e.Config.LogLevel != slog.LevelInfo {
+		t.Errorf("Expected LogLevel: 1, Actual: %d", e.Config.LogLevel)
 	}
 }
 
@@ -405,7 +405,7 @@ func Test_JSON(t *testing.T) {
 			t.Parallel()
 			rr := httptest.NewRecorder()
 			c := &CTX{
-				W: rr,
+				W: &responseWriterWrapper{ResponseWriter: rr},
 			}
 
 			c.JSON(tt.givenCode, tt.givenData)
@@ -449,7 +449,7 @@ func Test_HTML(t *testing.T) {
 			t.Parallel()
 			rr := httptest.NewRecorder()
 			c := &CTX{
-				W: rr,
+				W: &responseWriterWrapper{ResponseWriter: rr},
 				E: &Engine{
 					Render: NewHTMLRender(),
 				},
