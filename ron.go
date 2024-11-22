@@ -239,6 +239,14 @@ func (e *Engine) Static(path, dir string) error {
 	return nil
 }
 
+func (c *CTX) Path(key string) string {
+	return c.R.PathValue(key)
+}
+
+func (c *CTX) Query(key string) string {
+	return c.R.URL.Query().Get(key)
+}
+
 func (c *CTX) JSON(code int, data any) {
 	c.W.Header().Set("Content-Type", "application/json")
 	encoder := json.NewEncoder(c.W)
