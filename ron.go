@@ -111,6 +111,7 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	e.middleware = append(e.middleware, e.timeOutMiddleware())
+	e.middleware = append(e.middleware, e.requestIdMiddleware())
 	handler = createStack(e.middleware...)(handler)
 	rw := &responseWriterWrapper{ResponseWriter: w}
 	handler.ServeHTTP(rw, r)
@@ -153,6 +154,20 @@ func (e *Engine) timeOutMiddleware() Middleware {
 				}
 			case <-done:
 			}
+		})
+	}
+}
+
+func (e *Engine) requestIdMiddleware() Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			id := r.Header.Get("X-Request-ID")
+			if id == "" {
+				id = fmt.Sprintf("%d", time.Now().UnixNano())
+			}
+			ctx = context.WithValue(ctx, "requestId", id)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
