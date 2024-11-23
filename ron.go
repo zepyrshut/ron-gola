@@ -53,6 +53,7 @@ type (
 )
 
 const (
+	RequestID        string = "request_id"
 	HeaderJSON       string = "application/json"
 	HeaderHTML_UTF8  string = "text/html; charset=utf-8"
 	HeaderCSS_UTF8   string = "text/css; charset=utf-8"
@@ -166,7 +167,7 @@ func (e *Engine) requestIdMiddleware() Middleware {
 			if id == "" {
 				id = fmt.Sprintf("%d", time.Now().UnixNano())
 			}
-			ctx = context.WithValue(ctx, "requestId", id)
+			ctx = context.WithValue(ctx, RequestID, id)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -6,7 +6,7 @@ todo te será familiar.
 
 ## Características
 
-- Sin dependencias
+- Sin dependencias ajenas a Google
 - Procesamiento y salida de ficheros HTML
 - Paginación lista para usar
 - Vinculación entrada formulario y JSON a tipos estructurados.
