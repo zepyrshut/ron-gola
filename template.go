@@ -56,9 +56,18 @@ func (re *Render) apply(opts ...RenderOptions) *Render {
 	return re
 }
 
+func defaultIfEmpty(fallback, value string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
+}
+
 func (re *Render) Template(w http.ResponseWriter, tmpl string, td *TemplateData) error {
 	var tc templateCache
 	var err error
+
+	re.Functions["default"] = defaultIfEmpty
 
 	if td == nil {
 		td = &TemplateData{}
