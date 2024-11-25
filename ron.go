@@ -22,6 +22,7 @@ type (
 
 	responseWriterWrapper struct {
 		http.ResponseWriter
+		http.Flusher
 		headerWritten bool
 	}
 
@@ -74,6 +75,10 @@ func (w *responseWriterWrapper) Write(b []byte) (int, error) {
 		w.ResponseWriter.WriteHeader(http.StatusOK)
 	}
 	return w.ResponseWriter.Write(b)
+}
+
+func (w *responseWriterWrapper) Flush() {
+	w.ResponseWriter.(http.Flusher).Flush()
 }
 
 func defaultEngine() *Engine {
