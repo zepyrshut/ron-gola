@@ -11,7 +11,7 @@ familiar.
 - Ready-to-use pagination
 - Binding form inputs and JSON to structured types
 
-## Motivación
+## Motivation
 
 It was created from the need to explore the standard library in depth and the 
 challenge of making a project with zero dependencies. With Go version 1.22, it 
